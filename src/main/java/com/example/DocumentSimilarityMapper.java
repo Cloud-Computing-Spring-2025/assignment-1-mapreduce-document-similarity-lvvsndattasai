@@ -1,44 +1,34 @@
-package com.example;
+package com.mapreduce;
 
-import org.apache.hadoop.io.*;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
+
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.StringTokenizer;
 
-public class DocumentSimilarityMapper extends Mapper<LongWritable, Text, Text, Text> {
-
-    private Text documentId = new Text();
-    private Text words = new Text();
+public class DocumentSimilarityMapper extends Mapper<Object, Text, Text, Text> {
+    private Text word = new Text();
+    private Text document = new Text();
 
     @Override
-    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-        String line = value.toString().trim();
-        if (line.isEmpty()) return;
+    protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+        String[] parts = value.toString().split("\t", 2);
+        if (parts.length < 2) return;
 
-        // Extract document ID (first word) and document content (rest of the line)
-        String[] parts = line.split("\\s+", 2);
-        if (parts.length < 2) return; // Skip invalid lines
+        String docName = parts[0]; // Extract document name
+        String content = parts[1];
 
-        String docName = parts[0].trim();  // Document ID
-        String docContent = parts[1].trim();  // Document Content
-
-        documentId.set(docName);
-        Set<String> uniqueWords = new HashSet<>();
-
-        // Tokenize words and clean them
-        StringTokenizer tokenizer = new StringTokenizer(docContent);
+        HashSet<String> uniqueWords = new HashSet<>();
+        StringTokenizer tokenizer = new StringTokenizer(content);
         while (tokenizer.hasMoreTokens()) {
-            String word = tokenizer.nextToken().replaceAll("[^a-zA-Z]", "").toLowerCase();
-            if (!word.isEmpty()) {
-                uniqueWords.add(word);
-            }
+            uniqueWords.add(tokenizer.nextToken().toLowerCase());
         }
 
-        // Emit (DocumentID, word list)
-        if (!uniqueWords.isEmpty()) {
-            words.set(String.join(",", uniqueWords));
-            context.write(documentId, words);
-            System.out.println("Mapper Output: " + documentId.toString() + " -> " + words.toString());
+        for (String token : uniqueWords) {
+            word.set(token);
+            document.set(docName);
+            context.write(document, word);
         }
     }
 }

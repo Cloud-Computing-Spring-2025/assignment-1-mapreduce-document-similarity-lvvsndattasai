@@ -1,1 +1,1 @@
-hadoop is used for big data processing
+doc2	hadoop is used for big data processing
